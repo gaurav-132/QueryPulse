@@ -8,8 +8,8 @@ class UserController {
             if (!firstName || !lastName || !email || !password) {
                 return res.status(400).json({ error: "Missing required fields" });
             }
-            const { user, apiKey } = await UserService.register({ firstName, lastName, email, mobile, password });
-            res.status(201).json({ user: { id: user.id, email: user.email, name: user.name }, apiKey });
+            const { user } = await UserService.register({ firstName, lastName, email, mobile, password });
+            res.status(201).json({ user: { id: user.id, email: user.email, name: user.name } });
         } catch (err) {
             res.status(400).json({ error: err.message });
         }
