@@ -14,19 +14,26 @@ class QueryService {
         return rows.length;
     }
 
+    async recordPlanSignals(customerId, planEntries) {
+        if (!Array.isArray(planEntries) || planEntries.length === 0) return;
+        await this.queryPlanRepo.saveMany(customerId, planEntries);
+    }
+
     async getSlowQueriesWithSuggestions(customerId) {
         const queryLogs = await this.repo.getSlowQueries(customerId);
-        return queryLogs.map((log) => ({
-        sqlText: log.sqlText,
-        runCount: log.runCount,
-        avgDurationMs: log.avgDurationMs,
-        maxDurationMs: log.maxDurationMs,
-        lastSeen: log.lastSeen,
-        suggestion:
-            log.isSlow(config.slowQueryThresholdMs) && log.runsOftenEnough(config.suggestionMinRunCount)
-            ? "Frequently run and slow — check for a missing index on the WHERE/JOIN columns."
-            : null,
-        }));
+        return queryLogs.map((log) => 
+            ({
+                sqlText: log.sqlText,
+                runCount: log.runCount,
+                avgDurationMs: log.avgDurationMs,
+                maxDurationMs: log.maxDurationMs,
+                lastSeen: log.lastSeen,
+                suggestion:
+                    log.isSlow(config.slowQueryThresholdMs) && log.runsOftenEnough(config.suggestionMinRunCount)
+                    ? "Frequently run and slow — check for a missing index on the WHERE/JOIN columns."
+                    : null,
+            })
+        );
     }
 
     async getStats(customerId) {

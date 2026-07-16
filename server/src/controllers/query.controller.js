@@ -1,4 +1,4 @@
-import QueryService from "../services/QueryService.js";
+import QueryService from "../services/query.service.js";
 import QueryRepository from "../repositories/query.repository.js";
 import { pool } from "../db/connection.js";
 
@@ -9,21 +9,19 @@ class QueryController {
 
     ingest = async (req, res) => {
         const { queries } = req.body;
-
         if (!Array.isArray(queries)) {
-            return res.status(400).json({
-                error: "Expected { queries: [...] }",
-            });
+            return res.status(400).json({ error: "Expected { queries: [...] }" });
         }
-
         try {
-            const count = await this.queryService.recordBatch(
-                req.customerId,
-                queries
-            );
+            const timingEntries = queries.filter((q) => q.type !== "plan_signal");
+            const planEntries = queries.filter((q) => q.type === "plan_signal");
 
-            res.json({ received: count });
+            const count = await this.queryService.recordBatch(req.customerId, timingEntries);
+            await this.queryService.recordPlanSignals(req.customerId, planEntries);
+
+            res.json({ received: count, plansReceived: planEntries.length });
         } catch (err) {
+            console.error("[ingest error]", err);
             res.status(400).json({ error: err.message });
         }
     };

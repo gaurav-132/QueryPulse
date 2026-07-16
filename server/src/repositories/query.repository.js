@@ -77,6 +77,9 @@ class QueryRepository {
         );
         return rows;
     }
+
+
+  
 }
 
 export default QueryRepository;
