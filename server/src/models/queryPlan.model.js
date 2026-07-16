@@ -5,8 +5,12 @@ class QueryPlan {
         this.id = row.id;
         this.fingerprint = row.fingerprint;
         this.customerId = row.customer_id;
-        this.seqScanTables = row.seq_scan_tables || [];
+        this.seqScans = row.seq_scans || [];
+        this.sorts = row.sorts || [];
+        this.nestedLoops = row.nested_loops || [];
         this.indexesUsed = row.indexes_used || [];
+        this.existingIndexes = row.existing_indexes || [];
+        this.staleStatistics = row.stale_statistics || [];
         this.estimatedCost = row.estimated_cost;
         this.capturedAt = row.captured_at;
     }

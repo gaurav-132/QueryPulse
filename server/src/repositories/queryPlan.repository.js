@@ -5,36 +5,38 @@ class QueryPlanRepository {
         this.pool = pool;
     }
 
-      async saveMany(customerId, planEntries) {
-        if (planEntries.length === 0) return;
+    async saveMany(customerId, planEntries) {
+        if (!planEntries || planEntries.length === 0) return;
 
-        const values = [];
-        const placeholders = planEntries.map((entry, i) => {
-            const offset = i * 5;
-            values.push(
-            entry.fingerprint,
-            customerId,
-            JSON.stringify(entry.seqScans || []),
-            JSON.stringify(entry.indexesUsed || []),
-            entry.estimatedCost || 0
-            );
-            return `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5})`;
-        });
-
-        await this.pool.query(
-            `INSERT INTO ${QueryPlan.tableName} (fingerprint, customer_id, seq_scan_tables, indexes_used, estimated_cost)
-            VALUES ${placeholders.join(", ")}`,
-            values
-        );
+        const client = await this.pool.connect();
+        try {
+        await client.query("BEGIN");
+            const insertText = `
+                INSERT INTO ${QueryPlan.tableName}
+                (fingerprint, customer_id, seq_scans, sorts, nested_loops, indexes_used, existing_indexes, stale_statistics, estimated_cost)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            `;
+            for (const entry of planEntries) {
+                await client.query(insertText, [
+                    entry.fingerprint,
+                    customerId,
+                    JSON.stringify(entry.seqScans || []),
+                    JSON.stringify(entry.sorts || []),
+                    JSON.stringify(entry.nestedLoops || []),
+                    JSON.stringify(entry.indexesUsed || []),
+                    JSON.stringify(entry.existingIndexes || []),
+                    JSON.stringify(entry.staleStatistics || []),
+                    entry.estimatedCost || 0,
+                ]);
+            }
+            await client.query("COMMIT");
+        } catch (err) {
+            await client.query("ROLLBACK");
+            throw err;
+        } finally {
+            client.release();
+        }
     }
-
-    // async save(customerId, fingerprint, signals) {
-    //     await this.pool.query(
-    //         `INSERT INTO ${QueryPlan.tableName} (fingerprint, customer_id, seq_scan_tables, indexes_used, estimated_cost)
-    //         VALUES ($1, $2, $3, $4, $5)`,
-    //         [fingerprint, customerId, JSON.stringify(signals.seqScans || []), JSON.stringify(signals.indexesUsed || []), signals.estimatedCost || 0]
-    //     );
-    // }
 
     async getLatestByFingerprint(customerId, fingerprint) {
         const { rows } = await this.pool.query(
